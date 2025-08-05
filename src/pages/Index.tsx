@@ -190,7 +190,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-primary text-primary-foreground">
+      {/* <div className="bg-gradient-primary text-primary-foreground">
         <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 sm:gap-4">
             <div className="min-w-0">
@@ -213,7 +213,7 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Main Content */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">

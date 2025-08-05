@@ -106,7 +106,7 @@ export default function AdminImport() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-primary text-primary-foreground">
+      {/* <div className="bg-gradient-primary text-primary-foreground">
         <div className="container mx-auto px-4 py-6 lg:py-8">
           <div className="flex items-center gap-4 mb-4">
             <Link to="/">
@@ -119,7 +119,7 @@ export default function AdminImport() {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">Importar Eventos</h1>
           <p className="text-sm sm:text-base lg:text-lg opacity-90">Importe eventos em lote através de um arquivo CSV</p>
         </div>
-      </div>
+      </div> */}
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-6 lg:py-8">
