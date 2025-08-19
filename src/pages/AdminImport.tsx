@@ -1,113 +1,131 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Upload, FileText } from "lucide-react";
+import { ArrowLeft, Upload, Edit, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-export default function AdminImport() {
+const AdminImport = () => {
   const [isUploading, setIsUploading] = useState(false);
+  const [events, setEvents] = useState<any[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<any[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editedEvent, setEditedEvent] = useState<any>({});
   const { toast } = useToast();
 
+  // Filtros
+  const [filterDate, setFilterDate] = useState("");
+  const [filterSessao, setFilterSessao] = useState("");
+  const [filterTema, setFilterTema] = useState("");
+  const [filterAutor, setFilterAutor] = useState("");
+
+  // 🔹 Buscar eventos
+  const fetchEvents = async () => {
+    const { data, error } = await supabase.from("events").select("*").order("date", { ascending: true });
+    if (error) {
+      console.error(error);
+      toast({ title: "Erro", description: "Não foi possível carregar os eventos", variant: "destructive" });
+    } else {
+      setEvents(data || []);
+      setFilteredEvents(data || []);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  // 🔹 Aplicar filtros
+  useEffect(() => {
+    let filtered = [...events];
+
+    // O filtro de data agora também usa includes() para ser mais flexível
+    if (filterDate) filtered = filtered.filter((e) => e.date?.includes(filterDate));
+    if (filterSessao) filtered = filtered.filter((e) => e.session_name?.toLowerCase().includes(filterSessao.toLowerCase()));
+    if (filterTema) filtered = filtered.filter((e) => e.theme?.toLowerCase().includes(filterTema.toLowerCase()));
+    if (filterAutor) filtered = filtered.filter((e) => e.authors?.toLowerCase().includes(filterAutor.toLowerCase()));
+
+    setFilteredEvents(filtered);
+  }, [filterDate, filterSessao, filterTema, filterAutor, events]);
+
+  // 🔹 Upload CSV
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     if (file.type !== "text/csv") {
-      toast({
-        title: "Erro",
-        description: "Por favor, selecione um arquivo CSV.",
-        variant: "destructive"
-      });
+      toast({ title: "Erro", description: "Por favor, selecione um arquivo CSV.", variant: "destructive" });
       return;
     }
 
     setIsUploading(true);
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        try {
-          const headers = results.meta.fields || [];
-          const requiredHeaders = ['Dia', 'Horário', 'Sessão', 'Tema', 'Código Artigo', 'Artigo', 'Autores', 'EMAIL'];
-          const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+    try {
+      const text = await file.text();
+      const result = Papa.parse(text, { header: true, skipEmptyLines: true });
 
-          if (missingHeaders.length > 0) {
-            toast({
-              title: "Erro no formato",
-              description: `Colunas obrigatórias faltando: ${missingHeaders.join(', ')}`,
-              variant: "destructive"
-            });
-            setIsUploading(false);
-            return;
-          }
-
-          const events = results.data.map((event: any) => ({
-            title: event['Artigo'] || 'Evento sem título',
-            description: event['Autores'] || null,
-            date: event['Dia'],
-            time: event['Horário'],
-            location: event['Sessão'] || 'Local não definido',
-            session_name: event['Sessão'],
-            theme: event['Tema'],
-            article_code: event['Código Artigo'],
-            authors: event['Autores'],
-            contact_email: event['EMAIL'],
-            max_attendees: 50,
-            current_attendees: 0,
-            image_url: null,
-            price: null
-          }));
-
-          const { error } = await supabase.from('events').insert(events);
-
-          if (error) {
-            console.error('Erro ao inserir eventos:', error);
-            toast({
-              title: "Erro",
-              description: "Erro ao importar eventos. Verifique o formato do arquivo.",
-              variant: "destructive"
-            });
-          } else {
-            toast({
-              title: "Sucesso!",
-              description: `${events.length} eventos importados com sucesso.`,
-            });
-            event.target.value = '';
-          }
-        } catch (error) {
-          console.error('Erro ao processar arquivo:', error);
-          toast({
-            title: "Erro",
-            description: "Erro ao processar o arquivo CSV.",
-            variant: "destructive"
-          });
-        } finally {
-          setIsUploading(false);
-        }
-      },
-      error: (err) => {
-        console.error('Erro no PapaParse:', err);
-        toast({
-          title: "Erro",
-          description: "Erro ao ler o arquivo CSV.",
-          variant: "destructive"
-        });
-        setIsUploading(false);
+      if (result.errors.length) {
+        toast({ title: "Erro", description: "Erro ao processar o CSV. Verifique o formato.", variant: "destructive" });
+        return;
       }
-    });
+
+      const eventsToInsert = result.data.map((ev: any) => ({
+        title: ev.title,
+        description: ev.description,
+        date: ev.date,
+        time: ev.time,
+        location: ev.location,
+        session_name: ev.session_name || null,
+        theme: ev.theme || null,
+        authors: ev.authors || null,
+        max_attendees: parseInt(ev.maxAttendees) || 50,
+        current_attendees: 0,
+        image_url: ev.imageUrl || null,
+        price: ev.price || null,
+      }));
+
+      const { error } = await supabase.from("events").insert(eventsToInsert);
+
+      if (error) {
+        toast({ title: "Erro", description: "Erro ao importar eventos.", variant: "destructive" });
+      } else {
+        toast({ title: "Sucesso!", description: `${eventsToInsert.length} eventos importados.` });
+        fetchEvents();
+      }
+    } catch (error) {
+      toast({ title: "Erro", description: "Erro ao processar o arquivo CSV.", variant: "destructive" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // 🔹 Editar evento
+  const startEditing = (event: any) => {
+    setEditingId(event.id);
+    setEditedEvent(event);
+  };
+
+  const saveEdit = async () => {
+    const { error } = await supabase.from("events").update(editedEvent).eq("id", editingId);
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível salvar as alterações.", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso!", description: "Evento atualizado." });
+      setEditingId(null);
+      fetchEvents();
+    }
   };
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* HEADER */}
       {/* <div className="bg-gradient-primary text-primary-foreground">
-        <div className="container mx-auto px-4 py-6 lg:py-8">
+        <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-4 mb-4">
             <Link to="/">
               <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20">
@@ -116,76 +134,94 @@ export default function AdminImport() {
               </Button>
             </Link>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2">Importar Eventos</h1>
-          <p className="text-sm sm:text-base lg:text-lg opacity-90">Importe eventos em lote através de um arquivo CSV</p>
+          <h1 className="text-4xl font-bold mb-2">Importar Eventos</h1>
+          <p className="text-lg opacity-90">Importe eventos em lote através de um arquivo CSV</p>
         </div>
       </div> */}
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-6 lg:py-8">
-        <div className="max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Upload className="w-5 h-5" />
-                Upload de Arquivo CSV
-              </CardTitle>
-              <CardDescription>
-                Selecione um arquivo CSV com os dados dos eventos para importar
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <Label htmlFor="csv-file">Arquivo CSV</Label>
-                <Input
-                  id="csv-file"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  disabled={isUploading}
-                  className="mt-2"
-                />
-              </div>
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        {/* UPLOAD CSV */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload de Arquivo CSV</CardTitle>
+            <CardDescription>Selecione um arquivo CSV com os dados dos eventos</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Input id="csv-file" type="file" accept=".csv" onChange={handleFileUpload} disabled={isUploading} />
+          </CardContent>
+        </Card>
 
-              {isUploading && (
-                <div className="flex items-center justify-center py-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <span className="ml-2">Importando eventos...</span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* FILTROS */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Filtros</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <Label>Data</Label>
+              <Input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} />
+            </div>
+            <div>
+              <Label>Sessão</Label>
+              <Input value={filterSessao} onChange={(e) => setFilterSessao(e.target.value)} placeholder="Sessão" />
+            </div>
+            <div>
+              <Label>Tema</Label>
+              <Input value={filterTema} onChange={(e) => setFilterTema(e.target.value)} placeholder="Tema" />
+            </div>
+            <div>
+              <Label>Autor</Label>
+              <Input value={filterAutor} onChange={(e) => setFilterAutor(e.target.value)} placeholder="Autor" />
+            </div>
+          </CardContent>
+        </Card>
 
-          <Card className="mt-4 lg:mt-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Formato do Arquivo
-              </CardTitle>
-              <CardDescription>
-                O arquivo CSV deve conter as seguintes colunas obrigatórias:
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="bg-muted p-3 lg:p-4 rounded-lg overflow-x-auto">
-                <code className="text-xs sm:text-sm whitespace-nowrap">
-                  Dia,Horário,Sessão,Tema,Código Artigo,Artigo,Autores,EMAIL
-                </code>
+        {/* LISTA DE EVENTOS */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Eventos Cadastrados</CardTitle>
+            <CardDescription>Gerencie os eventos já importados</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {filteredEvents.length === 0 ? (
+              <p className="text-muted-foreground">Nenhum evento encontrado.</p>
+            ) : (
+              <div className="space-y-4">
+                {filteredEvents.map((ev) => (
+                  <div key={ev.id} className="p-4 border rounded-lg flex flex-col gap-2">
+                    {editingId === ev.id ? (
+                      <>
+                        <Input value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
+                        <Input value={editedEvent.location} onChange={(e) => setEditedEvent({ ...editedEvent, location: e.target.value })} />
+                        <Input value={editedEvent.date} onChange={(e) => setEditedEvent({ ...editedEvent, date: e.target.value })} />
+                        <Input value={editedEvent.time} onChange={(e) => setEditedEvent({ ...editedEvent, time: e.target.value })} />
+                        <Input value={editedEvent.session_name || ""} onChange={(e) => setEditedEvent({ ...editedEvent, session_name: e.target.value })} />
+                        <Input value={editedEvent.theme || ""} onChange={(e) => setEditedEvent({ ...editedEvent, theme: e.target.value })} />
+                        <Input value={editedEvent.authors || ""} onChange={(e) => setEditedEvent({ ...editedEvent, authors: e.target.value })} />
+                        <Button onClick={saveEdit} className="mt-2 flex items-center gap-2">
+                          <Save className="w-4 h-4" /> Salvar
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <p className="font-bold">{ev.title}</p>
+                        <p>{ev.location}</p>
+                        <p>{ev.date} {ev.time}</p>
+                        <p><b>Sessão:</b> {ev.session_name || "—"} | <b>Tema:</b> {ev.theme || "—"} | <b>Autor:</b> {ev.authors || "—"}</p>
+                        <Button variant="outline" size="sm" onClick={() => startEditing(ev)} className="flex items-center gap-2">
+                          <Edit className="w-4 h-4" /> Editar
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="mt-4 space-y-2 text-xs sm:text-sm text-muted-foreground">
-                <p><strong>Dia:</strong> Data do evento (formato: DD/MM/AAAA ou AAAA-MM-DD)</p>
-                <p><strong>Horário:</strong> Horário no formato HH:MM</p>
-                <p><strong>Sessão:</strong> Nome da sessão ou local do evento</p>
-                <p><strong>Tema:</strong> Tema ou categoria do evento</p>
-                <p><strong>Código Artigo:</strong> Código de referência do artigo</p>
-                <p><strong>Artigo:</strong> Título do artigo/apresentação</p>
-                <p><strong>Autores:</strong> Nomes dos autores</p>
-                <p><strong>EMAIL:</strong> Email de contato (opcional)</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
-}
+};
+
+export default AdminImport;
