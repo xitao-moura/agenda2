@@ -6,12 +6,14 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { FileText, Users } from "lucide-react";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 const Index = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [confirmedEvents, setConfirmedEvents] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string>("Todas");
   const { toast } = useToast();
 
   const getSessionId = () => {
@@ -176,13 +178,10 @@ const Index = () => {
     }
   };
 
-  const eventsByCategory = (category: string) =>
-    events.filter((ev) => ev.category === category);
-
-  const confirmedByCategory = (category: string) =>
-    events.filter(
-      (ev) => ev.category === category && confirmedEvents.includes(ev.id)
-    );
+  const filteredEvents = (list: Event[]) =>
+    filterCategory === "Todas"
+      ? list
+      : list.filter((ev) => ev.category === filterCategory);
 
   return (
     <div className="min-h-screen bg-background">
@@ -220,26 +219,42 @@ const Index = () => {
         </div>
       </div> */}
 
+      {/* Filtro de categoria */}
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Filtrar por categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Todas">Todas</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Main Content */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
         <Tabs defaultValue="all">
           <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-1 mb-4">
-            <TabsTrigger value="all">Todos ({events.length})</TabsTrigger>
-            <TabsTrigger value="my">Meus Eventos ({confirmedEvents.length})</TabsTrigger>
+            <TabsTrigger value="all">Todos ({filteredEvents(events).length})</TabsTrigger>
+            <TabsTrigger value="my">Meus Eventos ({filteredEvents(events.filter(ev => confirmedEvents.includes(ev.id))).length})</TabsTrigger>
             {categories.map((cat) => (
               <TabsTrigger key={cat} value={cat}>
-                {cat} ({eventsByCategory(cat).length})
+                {cat} ({filteredEvents(events.filter(ev => ev.category === cat)).length})
               </TabsTrigger>
             ))}
           </TabsList>
 
-          {/* Aba Todos */}
           <TabsContent value="all">
             {isLoading ? (
               <p>Carregando eventos...</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {events.map((ev) => (
+                {filteredEvents(events).map((ev) => (
                   <EventCard
                     key={ev.id}
                     event={ev}
@@ -252,37 +267,33 @@ const Index = () => {
             )}
           </TabsContent>
 
-          {/* Aba Meus Eventos */}
           <TabsContent value="my">
             {isLoading ? (
               <p>Carregando eventos...</p>
-            ) : confirmedEvents.length === 0 ? (
+            ) : filteredEvents(events.filter((ev) => confirmedEvents.includes(ev.id))).length === 0 ? (
               <p>Nenhum evento confirmado.</p>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {events
-                  .filter((ev) => confirmedEvents.includes(ev.id))
-                  .map((ev) => (
-                    <EventCard
-                      key={ev.id}
-                      event={ev}
-                      isConfirmed={true}
-                      onConfirm={handleConfirmEvent}
-                      onCancel={handleCancelEvent}
-                    />
-                  ))}
+                {filteredEvents(events.filter((ev) => confirmedEvents.includes(ev.id))).map((ev) => (
+                  <EventCard
+                    key={ev.id}
+                    event={ev}
+                    isConfirmed={true}
+                    onConfirm={handleConfirmEvent}
+                    onCancel={handleCancelEvent}
+                  />
+                ))}
               </div>
             )}
           </TabsContent>
 
-          {/* Abas por Categoria */}
           {categories.map((cat) => (
             <TabsContent key={cat} value={cat}>
               {isLoading ? (
                 <p>Carregando eventos...</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                  {eventsByCategory(cat).map((ev) => (
+                  {filteredEvents(events.filter((ev) => ev.category === cat)).map((ev) => (
                     <EventCard
                       key={ev.id}
                       event={ev}
