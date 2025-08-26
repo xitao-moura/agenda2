@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Upload, Edit, Save } from "lucide-react";
+import { ArrowLeft, Edit, Save } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -18,11 +18,12 @@ const AdminImport = () => {
   const [editedEvent, setEditedEvent] = useState<any>({});
   const { toast } = useToast();
 
-  // Filtros
   const [filterDate, setFilterDate] = useState("");
   const [filterSessao, setFilterSessao] = useState("");
   const [filterTema, setFilterTema] = useState("");
   const [filterAutor, setFilterAutor] = useState("");
+
+  const [category, setCategory] = useState("");
 
   // 🔹 Buscar eventos
   const fetchEvents = async () => {
@@ -43,13 +44,10 @@ const AdminImport = () => {
   // 🔹 Aplicar filtros
   useEffect(() => {
     let filtered = [...events];
-
-    // O filtro de data agora também usa includes() para ser mais flexível
     if (filterDate) filtered = filtered.filter((e) => e.date?.includes(filterDate));
     if (filterSessao) filtered = filtered.filter((e) => e.session_name?.toLowerCase().includes(filterSessao.toLowerCase()));
     if (filterTema) filtered = filtered.filter((e) => e.theme?.toLowerCase().includes(filterTema.toLowerCase()));
     if (filterAutor) filtered = filtered.filter((e) => e.authors?.toLowerCase().includes(filterAutor.toLowerCase()));
-
     setFilteredEvents(filtered);
   }, [filterDate, filterSessao, filterTema, filterAutor, events]);
 
@@ -57,6 +55,11 @@ const AdminImport = () => {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (!category) {
+      toast({ title: "Erro", description: "Selecione uma categoria antes de importar.", variant: "destructive" });
+      return;
+    }
 
     if (file.type !== "text/csv") {
       toast({ title: "Erro", description: "Por favor, selecione um arquivo CSV.", variant: "destructive" });
@@ -75,18 +78,21 @@ const AdminImport = () => {
       }
 
       const eventsToInsert = result.data.map((ev: any) => ({
-        title: ev.title,
-        description: ev.description,
-        date: ev.date,
-        time: ev.time,
-        location: ev.location,
-        session_name: ev.session_name || null,
-        theme: ev.theme || null,
-        authors: ev.authors || null,
-        max_attendees: parseInt(ev.maxAttendees) || 50,
+        title: ev.Artigo || null,
+        description: null,
+        date: ev.Dia || null,
+        time: ev.Horário || null,
+        location: null,
+        maxAttendees: 50,
         current_attendees: 0,
-        image_url: ev.imageUrl || null,
-        price: ev.price || null,
+        imageUrl: null,
+        price: null,
+        session_name: ev.Sessão || null,
+        theme: ev.Tema || null,
+        article_code: ev["Código Artigo"] || null,
+        authors: ev.Autores || null,
+        contact_email: ev.EMAIL || null,
+        category, // categoria escolhida
       }));
 
       const { error } = await supabase.from("events").insert(eventsToInsert);
@@ -98,6 +104,7 @@ const AdminImport = () => {
         fetchEvents();
       }
     } catch (error) {
+      console.error(error);
       toast({ title: "Erro", description: "Erro ao processar o arquivo CSV.", variant: "destructive" });
     } finally {
       setIsUploading(false);
@@ -123,30 +130,29 @@ const AdminImport = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* HEADER */}
-      {/* <div className="bg-gradient-primary text-primary-foreground">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="text-primary-foreground hover:bg-white/20">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar
-              </Button>
-            </Link>
-          </div>
-          <h1 className="text-4xl font-bold mb-2">Importar Eventos</h1>
-          <p className="text-lg opacity-90">Importe eventos em lote através de um arquivo CSV</p>
-        </div>
-      </div> */}
-
       <div className="container mx-auto px-4 py-8 space-y-6">
         {/* UPLOAD CSV */}
         <Card>
           <CardHeader>
             <CardTitle>Upload de Arquivo CSV</CardTitle>
-            <CardDescription>Selecione um arquivo CSV com os dados dos eventos</CardDescription>
+            <CardDescription>Selecione uma categoria e um arquivo CSV com os dados dos eventos</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Select de Categoria */}
+            <div>
+              <Label>Categoria</Label>
+              <Select onValueChange={(val) => setCategory(val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="workshop">Workshop</SelectItem>
+                  <SelectItem value="palestra">Palestra</SelectItem>
+                  <SelectItem value="curso">Curso</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Input id="csv-file" type="file" accept=".csv" onChange={handleFileUpload} disabled={isUploading} />
           </CardContent>
         </Card>
@@ -192,12 +198,13 @@ const AdminImport = () => {
                     {editingId === ev.id ? (
                       <>
                         <Input value={editedEvent.title} onChange={(e) => setEditedEvent({ ...editedEvent, title: e.target.value })} />
-                        <Input value={editedEvent.location} onChange={(e) => setEditedEvent({ ...editedEvent, location: e.target.value })} />
-                        <Input value={editedEvent.date} onChange={(e) => setEditedEvent({ ...editedEvent, date: e.target.value })} />
-                        <Input value={editedEvent.time} onChange={(e) => setEditedEvent({ ...editedEvent, time: e.target.value })} />
                         <Input value={editedEvent.session_name || ""} onChange={(e) => setEditedEvent({ ...editedEvent, session_name: e.target.value })} />
                         <Input value={editedEvent.theme || ""} onChange={(e) => setEditedEvent({ ...editedEvent, theme: e.target.value })} />
+                        <Input value={editedEvent.time || ""} onChange={(e) => setEditedEvent({ ...editedEvent, time: e.target.value })} />
+                        <Input value={editedEvent.article_code || ""} onChange={(e) => setEditedEvent({ ...editedEvent, article_code: e.target.value })} />
                         <Input value={editedEvent.authors || ""} onChange={(e) => setEditedEvent({ ...editedEvent, authors: e.target.value })} />
+                        <Input value={editedEvent.contact_email || ""} onChange={(e) => setEditedEvent({ ...editedEvent, contact_email: e.target.value })} />
+                        <Input value={editedEvent.category || ""} onChange={(e) => setEditedEvent({ ...editedEvent, category: e.target.value })} />
                         <Button onClick={saveEdit} className="mt-2 flex items-center gap-2">
                           <Save className="w-4 h-4" /> Salvar
                         </Button>
@@ -205,9 +212,10 @@ const AdminImport = () => {
                     ) : (
                       <>
                         <p className="font-bold">{ev.title}</p>
-                        <p>{ev.location}</p>
                         <p>{ev.date} {ev.time}</p>
                         <p><b>Sessão:</b> {ev.session_name || "—"} | <b>Tema:</b> {ev.theme || "—"} | <b>Autor:</b> {ev.authors || "—"}</p>
+                        <p><b>Código Artigo:</b> {ev.article_code || "—"} | <b>Email:</b> {ev.contact_email || "—"}</p>
+                        <p><b>Categoria:</b> {ev.category || "—"}</p>
                         <Button variant="outline" size="sm" onClick={() => startEditing(ev)} className="flex items-center gap-2">
                           <Edit className="w-4 h-4" /> Editar
                         </Button>
