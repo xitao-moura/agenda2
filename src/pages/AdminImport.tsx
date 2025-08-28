@@ -83,7 +83,7 @@ const AdminImport = () => {
         date: ev.Dia || null,
         time: ev.Horário || null,
         location: null,
-        maxAttendees: 50,
+        maxAttendees: 500,
         current_attendees: 0,
         imageUrl: null,
         price: null,
@@ -146,9 +146,8 @@ const AdminImport = () => {
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="workshop">Workshop</SelectItem>
-                  <SelectItem value="palestra">Palestra</SelectItem>
-                  <SelectItem value="curso">Curso</SelectItem>
+                  <SelectItem value="posters">Posters</SelectItem>
+                  <SelectItem value="plenaria">Plenária</SelectItem>
                 </SelectContent>
               </Select>
             </div>

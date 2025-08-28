@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { FileText, Users } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Input } from "@/components/ui/input"; // ✅ import do input para filtro de título
 
 const Index = () => {
   const [events, setEvents] = useState<Event[]>([]);
@@ -14,6 +15,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [categories, setCategories] = useState<string[]>([]);
   const [filterCategory, setFilterCategory] = useState<string>("Todas");
+  const [filterTitle, setFilterTitle] = useState<string>(""); // ✅ estado para título
   const { toast } = useToast();
 
   const getSessionId = () => {
@@ -178,49 +180,17 @@ const Index = () => {
     }
   };
 
+  // ✅ agora o filtro aplica categoria + título
   const filteredEvents = (list: Event[]) =>
-    filterCategory === "Todas"
-      ? list
-      : list.filter((ev) => ev.category === filterCategory);
+    list.filter((ev) =>
+      (filterCategory === "Todas" || ev.category === filterCategory) &&
+      ev.title.toLowerCase().includes(filterTitle.toLowerCase())
+    );
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      {/* <div className="bg-gradient-primary text-primary-foreground">
-        <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 flex flex-col lg:flex-row justify-between items-start gap-3 sm:gap-4">
-          <div>
-            <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold mb-1 sm:mb-2 leading-tight">
-              Agenda de Eventos
-            </h1>
-            <p className="text-xs sm:text-sm lg:text-lg opacity-90">
-              Descubra e confirme presença nos melhores eventos
-            </p>
-          </div>
-          <div className="flex flex-row gap-2">
-            <Link to="/admin/import">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-auto text-primary-foreground hover:bg-white/20 px-2 sm:px-3"
-              >
-                <FileText className="w-4 h-4 mr-2" /> Import
-              </Button>
-            </Link>
-            <Link to="/admin/confirmations">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-auto text-primary-foreground hover:bg-white/20 px-2 sm:px-3"
-              >
-                <Users className="w-4 h-4 mr-2" /> Admin
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </div> */}
-
-      {/* Filtro de categoria */}
-      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8">
+      {/* Filtro de categoria + título */}
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 flex flex-col sm:flex-row gap-3">
         <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Filtrar por categoria" />
@@ -234,6 +204,15 @@ const Index = () => {
             ))}
           </SelectContent>
         </Select>
+
+        {/* ✅ Campo de busca por título */}
+        <Input
+          type="text"
+          placeholder="Buscar por título..."
+          value={filterTitle}
+          onChange={(e) => setFilterTitle(e.target.value)}
+          className="max-w-sm"
+        />
       </div>
 
       {/* Main Content */}
