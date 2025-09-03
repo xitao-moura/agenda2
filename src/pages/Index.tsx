@@ -50,6 +50,7 @@ const Index = () => {
         article_code: event.article_code,
         authors: event.authors,
         contact_email: event.contact_email,
+        sala: event.sala,
       }));
 
       setEvents(formattedEvents);
@@ -184,15 +185,15 @@ const Index = () => {
   const filteredEvents = (list: Event[]) =>
     list.filter((ev) =>
       (filterCategory === "Todas" || ev.category === filterCategory) &&
-      ev.title.toLowerCase().includes(filterTitle.toLowerCase())
-    );
+      (ev.title.toLowerCase().includes(filterTitle.toLowerCase()) || ev.article_code.toLowerCase().includes(filterTitle.toLowerCase())
+    ));
 
   return (
     <div className="min-h-screen bg-background">
       {/* Filtro de categoria + título */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 flex flex-col sm:flex-row gap-3">
         <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="max-w-sm">
             <SelectValue placeholder="Filtrar por categoria" />
           </SelectTrigger>
           <SelectContent>
@@ -221,11 +222,11 @@ const Index = () => {
           <TabsList className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-1 mb-4">
             <TabsTrigger value="all">Todos ({filteredEvents(events).length})</TabsTrigger>
             <TabsTrigger value="my">Meus Eventos ({filteredEvents(events.filter(ev => confirmedEvents.includes(ev.id))).length})</TabsTrigger>
-            {categories.map((cat) => (
-              <TabsTrigger key={cat} value={cat}>
+            {/* {categories.map((cat) => (
+              <TabsTrigger key={cat} value={cat} className="w-60">
                 {cat} ({filteredEvents(events.filter(ev => ev.category === cat)).length})
               </TabsTrigger>
-            ))}
+            ))} */}
           </TabsList>
 
           <TabsContent value="all">

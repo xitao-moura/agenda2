@@ -19,6 +19,7 @@ export interface Event {
   article_code?: string;
   authors?: string;
   contact_email?: string;
+  sala?: string;
 }
 
 interface EventCardProps {
@@ -40,12 +41,12 @@ export const EventCard = ({ event, isConfirmed, onConfirm, onCancel }: EventCard
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      'Tecnologia': 'bg-blue-100 text-blue-800 border-blue-200',
-      'Música': 'bg-purple-100 text-purple-800 border-purple-200',
-      'Esportes': 'bg-green-100 text-green-800 border-green-200',
-      'Arte': 'bg-pink-100 text-pink-800 border-pink-200',
-      'Negócios': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      'Educação': 'bg-indigo-100 text-indigo-800 border-indigo-200'
+      'Palestras Magnas': 'bg-blue-100 text-blue-800 border-blue-200',
+      'Seminários': 'bg-purple-100 text-purple-800 border-purple-200',
+      'Apresentação de artigos - orais': 'bg-green-100 text-green-800 border-green-200',
+      'Apresentação de artigos - posters': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+      'Cursos': 'bg-pink-100 text-pink-800 border-pink-200',
+      'Concursos': 'bg-yellow-100 text-yellow-800 border-yellow-200'
     };
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800 border-gray-200';
   };
@@ -85,8 +86,8 @@ export const EventCard = ({ event, isConfirmed, onConfirm, onCancel }: EventCard
           </div>
           
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
-            <span className="truncate">{event.currentAttendees}/{event.maxAttendees} participantes</span>
+            <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
+            <span className="truncate">sala - {event.sala ? event.sala : 'não informada'}</span>
           </div>
           
           {event.article_code && (

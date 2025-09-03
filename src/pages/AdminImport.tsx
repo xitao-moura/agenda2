@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Edit, Save } from "lucide-react";
+import { ArrowLeft, Edit, Save, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import Papa from "papaparse";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -93,6 +93,7 @@ const AdminImport = () => {
         authors: ev.Autores || null,
         contact_email: ev.EMAIL || null,
         category, // categoria escolhida
+        sala: ev.sala || null,
       }));
 
       const { error } = await supabase.from("events").insert(eventsToInsert);
@@ -128,6 +129,45 @@ const AdminImport = () => {
     }
   };
 
+  // 🔹 Deletar evento específico (com retorno para confirmar deleção)
+  const deleteEvent = async (id: number | string) => {
+    const { error, data } = await supabase.from("events").delete().eq("id", id).select("id");
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível deletar o evento.", variant: "destructive" });
+      return;
+    }
+    if (!data || data.length === 0) {
+      toast({
+        title: "Nenhuma linha deletada",
+        description: "Verifique as políticas de RLS: talvez seu usuário não tenha permissão para excluir este registro.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: "Sucesso!", description: `Evento #${id} deletado.` });
+    fetchEvents();
+  };
+
+  // 🔹 Deletar todos eventos (usa condição ampla + retorno dos IDs deletados)
+  const deleteAllEvents = async () => {
+    const { error, data } = await supabase.from("events").delete().gt("id", 0).select("id");
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível deletar todos os eventos.", variant: "destructive" });
+      return;
+    }
+    const count = data?.length ?? 0;
+    if (count === 0) {
+      toast({
+        title: "Nenhuma linha deletada",
+        description: "Isso geralmente indica RLS bloqueando a operação. Garanta que exista uma policy de DELETE permitindo seu usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+    toast({ title: "Sucesso!", description: `${count} eventos deletados.` });
+    fetchEvents();
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 space-y-6">
@@ -146,8 +186,12 @@ const AdminImport = () => {
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="posters">Posters</SelectItem>
-                  <SelectItem value="plenaria">Plenária</SelectItem>
+                  <SelectItem value="palestras magnas ">Palestras Magnas </SelectItem>
+                  <SelectItem value="seminários">Seminários</SelectItem>
+                  <SelectItem value="apresentação de artigos - orais">Apresentação de artigos - orais</SelectItem>
+                  <SelectItem value="apresentação de artigos - posters">Apresentação de artigos - posters</SelectItem>
+                  <SelectItem value="cursos">Cursos</SelectItem>
+                  <SelectItem value="concursos">Concursos</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -183,9 +227,16 @@ const AdminImport = () => {
 
         {/* LISTA DE EVENTOS */}
         <Card>
-          <CardHeader>
-            <CardTitle>Eventos Cadastrados</CardTitle>
-            <CardDescription>Gerencie os eventos já importados</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Eventos Cadastrados</CardTitle>
+              <CardDescription>Gerencie os eventos já importados</CardDescription>
+            </div>
+            {filteredEvents.length > 0 && (
+              <Button variant="destructive" size="sm" onClick={deleteAllEvents} className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4" /> Deletar Todos
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             {filteredEvents.length === 0 ? (
@@ -215,9 +266,14 @@ const AdminImport = () => {
                         <p><b>Sessão:</b> {ev.session_name || "—"} | <b>Tema:</b> {ev.theme || "—"} | <b>Autor:</b> {ev.authors || "—"}</p>
                         <p><b>Código Artigo:</b> {ev.article_code || "—"} | <b>Email:</b> {ev.contact_email || "—"}</p>
                         <p><b>Categoria:</b> {ev.category || "—"}</p>
-                        <Button variant="outline" size="sm" onClick={() => startEditing(ev)} className="flex items-center gap-2">
-                          <Edit className="w-4 h-4" /> Editar
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => startEditing(ev)} className="flex items-center gap-2">
+                            <Edit className="w-4 h-4" /> Editar
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => deleteEvent(ev.id)} className="flex items-center gap-2">
+                            <Trash2 className="w-4 h-4" /> Deletar
+                          </Button>
+                        </div>
                       </>
                     )}
                   </div>
