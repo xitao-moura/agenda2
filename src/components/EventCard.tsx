@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Clock, Users } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export interface Event {
   id: string;
@@ -30,13 +32,18 @@ interface EventCardProps {
 }
 
 export const EventCard = ({ event, isConfirmed, onConfirm, onCancel }: EventCardProps) => {
+  // const formatDate = (dateString: string) => {
+  //   const date = new Date(dateString);
+  //   return date.toLocaleDateString('pt-BR', {
+  //     weekday: 'short',
+  //     day: '2-digit',
+  //     month: 'short'
+  //   });
+  // };
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', {
-      weekday: 'short',
-      day: '2-digit',
-      month: 'short'
-    });
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-"); // pega direto a string vinda do Supabase
+    return format(new Date(+year, +month - 1, +day), "EEE, dd 'de' MMM", { locale: ptBR });
   };
 
   const getCategoryColor = (category: string) => {
@@ -58,8 +65,12 @@ export const EventCard = ({ event, isConfirmed, onConfirm, onCancel }: EventCard
           <CardTitle className="text-base sm:text-lg font-semibold text-foreground line-clamp-2 leading-tight">
             {event.title}
           </CardTitle>
-          <Badge className={`${getCategoryColor(event.theme || event.category)} border text-xs shrink-0`}>
-            {event.theme || event.category}
+          <Badge
+            className={`${getCategoryColor(event.theme || event.category)} border text-xs shrink-0`}
+          >
+            {(event.theme || event.category)?.length > 10
+              ? (event.theme || event.category).slice(0, 10) + "..."
+              : event.theme || event.category}
           </Badge>
         </div>
       </CardHeader>
@@ -80,10 +91,14 @@ export const EventCard = ({ event, isConfirmed, onConfirm, onCancel }: EventCard
             <span className="truncate">{event.time}</span>
           </div>
           
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
-            <span className="line-clamp-1 min-w-0">{event.session_name || event.location}</span>
-          </div>
+          {(event.session_name || event.location) && (
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
+              <span className="line-clamp-1 min-w-0">
+                {event.session_name || event.location}
+              </span>
+            </div>
+          )}
           
           <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
             <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary shrink-0" />
