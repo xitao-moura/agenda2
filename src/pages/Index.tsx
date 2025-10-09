@@ -185,7 +185,7 @@ const Index = () => {
   const filteredEvents = (list: Event[]) =>
     list.filter((ev) =>
       (filterCategory === "Todas" || ev.category === filterCategory) &&
-      (ev.title.toLowerCase().includes(filterTitle.toLowerCase()) || ev.article_code.toLowerCase().includes(filterTitle.toLowerCase())
+      (ev.title.toLowerCase().includes(filterTitle.toLowerCase()) || ev?.article_code?.toLowerCase()?.includes(filterTitle.toLowerCase()) || ev?.authors?.toLowerCase()?.includes(filterTitle.toLowerCase())
     ));
 
   return (
@@ -209,7 +209,7 @@ const Index = () => {
         {/* ✅ Campo de busca por título */}
         <Input
           type="text"
-          placeholder="Buscar por título..."
+          placeholder="Buscar por título, artigo ou autor..."
           value={filterTitle}
           onChange={(e) => setFilterTitle(e.target.value)}
           className="max-w-sm"
