@@ -148,6 +148,24 @@ const AdminImport = () => {
     fetchEvents();
   };
 
+  // 🔹 Deletar eventos por categoria
+  const deleteEventsByCategory = async () => {
+    if (!category) {
+      toast({ title: "Erro", description: "Selecione uma categoria para deletar.", variant: "destructive" });
+      return;
+    }
+
+    const { error, data } = await supabase.from("events").delete().eq("category", category).select("id");
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível deletar os eventos da categoria.", variant: "destructive" });
+      return;
+    }
+
+    const count = data?.length ?? 0;
+    toast({ title: "Sucesso!", description: `${count} eventos da categoria "${category}" foram deletados.` });
+    fetchEvents();
+  };
+
   // 🔹 Deletar todos eventos (usa condição ampla + retorno dos IDs deletados)
   const deleteAllEvents = async () => {
     const { error, data } = await supabase.from("events").delete().gt("id", 0).select("id");
@@ -178,15 +196,16 @@ const AdminImport = () => {
             <CardDescription>Selecione uma categoria e um arquivo CSV com os dados dos eventos</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Select de Categoria */}
+            
+            {/* Select de Categoria para IMPORTAÇÃO */}
             <div>
-              <Label>Categoria</Label>
+              <Label>Categoria (para importar)</Label>
               <Select onValueChange={(val) => setCategory(val)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="palestras magnas ">Palestras Magnas </SelectItem>
+                  <SelectItem value="palestras magnas">Palestras Magnas</SelectItem>
                   <SelectItem value="seminários">Seminários</SelectItem>
                   <SelectItem value="apresentação de artigos - orais">Apresentação de artigos - orais</SelectItem>
                   <SelectItem value="apresentação de artigos - posters">Apresentação de artigos - posters</SelectItem>
@@ -196,9 +215,40 @@ const AdminImport = () => {
               </Select>
             </div>
 
-            <Input id="csv-file" type="file" accept=".csv" onChange={handleFileUpload} disabled={isUploading} />
+            <div className="flex gap-2">
+              <Input id="csv-file" type="file" accept=".csv" onChange={handleFileUpload} disabled={isUploading} />
+            </div>
+
+            {/* NOVO BLOCO - Selecionar categoria para exclusão */}
+            <div className="border-t pt-4 space-y-2">
+              <Label>Selecionar categoria para deletar</Label>
+              <Select onValueChange={(val) => setCategory(val)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a categoria para deletar" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="palestras magnas">Palestras Magnas</SelectItem>
+                  <SelectItem value="seminários">Seminários</SelectItem>
+                  <SelectItem value="apresentação de artigos - orais">Apresentação de artigos - orais</SelectItem>
+                  <SelectItem value="apresentação de artigos - posters">Apresentação de artigos - posters</SelectItem>
+                  <SelectItem value="cursos">Cursos</SelectItem>
+                  <SelectItem value="concursos">Concursos</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="destructive"
+                onClick={deleteEventsByCategory}
+                disabled={!category}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" /> Deletar Categoria Selecionada
+              </Button>
+            </div>
+
           </CardContent>
         </Card>
+
 
         {/* FILTROS */}
         <Card>
