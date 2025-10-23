@@ -69,7 +69,9 @@ const AdminImport = () => {
     setIsUploading(true);
 
     try {
-      const text = await file.text();
+      const arrayBuffer = await file.arrayBuffer();
+      const decoder = new TextDecoder("utf-8"); // ou "windows-1252" se for CSV do Excel
+      const text = decoder.decode(arrayBuffer);
       const result = Papa.parse(text, { header: true, skipEmptyLines: true });
 
       if (result.errors.length) {
