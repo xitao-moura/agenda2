@@ -95,7 +95,7 @@ const AdminImport = () => {
         authors: ev.Autores || null,
         contact_email: ev.EMAIL || null,
         category, // categoria escolhida
-        sala: ev.sala || null,
+        sala: ev.Sala || ev.sala || null,
       }));
 
       const { error } = await supabase.from("events").insert(eventsToInsert);
